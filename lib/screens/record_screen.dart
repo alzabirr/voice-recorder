@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'dart:ui';
 import '../providers/record_provider.dart';
 import '../utils/format_utils.dart';
 import '../widgets/waveform_widget.dart';
@@ -25,50 +26,152 @@ class _RecordScreenState extends State<RecordScreen> {
                   const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
                       children: [
-                        Text(
-                          'Voice Recorder',
-                          style: CupertinoTheme.of(context).textTheme.navTitleTextStyle.copyWith(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -0.5,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Voice Recorder',
+                              style: CupertinoTheme.of(context).textTheme.navTitleTextStyle.copyWith(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                transitionBuilder: (Widget child, Animation<double> animation) {
+                                  return FadeTransition(
+                                    opacity: animation,
+                                    child: ScaleTransition(scale: animation, child: child),
+                                  );
+                                },
+                                child: Icon(
+                                  (provider.isRecording || provider.isPaused) 
+                                      ? CupertinoIcons.xmark 
+                                      : CupertinoIcons.list_bullet, 
+                                  key: ValueKey((provider.isRecording || provider.isPaused) ? 'cancel' : 'list'),
+                                  color: (provider.isRecording || provider.isPaused)
+                                      ? CupertinoColors.systemRed
+                                      : CupertinoColors.activeBlue, 
+                                  size: 28
+                                ),
+                              ),
+                              onPressed: () {
+                                if (provider.isRecording || provider.isPaused) {
+                                  _showDiscardConfirmDialog(context, provider);
+                                } else {
+                                  Navigator.of(context).push(
+                                    CupertinoPageRoute(
+                                      builder: (context) => const RecordingsListScreen(),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
                         ),
-                        CupertinoButton(
-                          padding: EdgeInsets.zero,
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            transitionBuilder: (Widget child, Animation<double> animation) {
-                              return FadeTransition(
-                                opacity: animation,
-                                child: ScaleTransition(scale: animation, child: child),
-                              );
-                            },
-                            child: Icon(
-                              (provider.isRecording || provider.isPaused) 
-                                  ? CupertinoIcons.xmark 
-                                  : CupertinoIcons.list_bullet, 
-                              key: ValueKey((provider.isRecording || provider.isPaused) ? 'cancel' : 'list'),
-                              color: (provider.isRecording || provider.isPaused)
-                                  ? CupertinoColors.systemRed
-                                  : CupertinoColors.activeBlue, 
-                              size: 28
+                        if (!provider.isRecording && !provider.isPaused)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 24.0),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(25),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: CupertinoColors.white.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(25),
+                                    border: Border.all(
+                                      color: CupertinoColors.white.withOpacity(0.1),
+                                      width: 0.5,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Voice Isolation
+                                      GestureDetector(
+                                        onTap: () => provider.toggleVoiceIsolation(!provider.isVoiceIsolationEnabled),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 250),
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: provider.isVoiceIsolationEnabled 
+                                                ? CupertinoColors.activeOrange.withOpacity(0.2)
+                                                : Color(0x00000000), // Use Color(0x00000000) for transparent
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                provider.isVoiceIsolationEnabled ? CupertinoIcons.waveform_circle_fill : CupertinoIcons.waveform_circle,
+                                                size: 18,
+                                                color: provider.isVoiceIsolationEnabled ? CupertinoColors.activeOrange : CupertinoColors.systemGrey2,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                "Isolation",
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: provider.isVoiceIsolationEnabled ? CupertinoColors.activeOrange : CupertinoColors.systemGrey2,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      
+                                      Container(
+                                        height: 16,
+                                        width: 1,
+                                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                                        color: CupertinoColors.systemGrey.withOpacity(0.3),
+                                      ),
+
+                                      // Podcast Mode
+                                      GestureDetector(
+                                        onTap: () => provider.togglePodcastMode(!provider.isPodcastModeEnabled),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 250),
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: provider.isPodcastModeEnabled 
+                                                ? CupertinoColors.activeBlue.withOpacity(0.2)
+                                                : Color(0x00000000), // Use Color(0x00000000) for transparent
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                provider.isPodcastModeEnabled ? CupertinoIcons.mic_fill : CupertinoIcons.mic,
+                                                size: 18,
+                                                color: provider.isPodcastModeEnabled ? CupertinoColors.activeBlue : CupertinoColors.systemGrey2,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                "Podcast",
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: provider.isPodcastModeEnabled ? CupertinoColors.activeBlue : CupertinoColors.systemGrey2,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                          onPressed: () {
-                            if (provider.isRecording || provider.isPaused) {
-                              _showDiscardConfirmDialog(context, provider);
-                            } else {
-                              Navigator.of(context).push(
-                                CupertinoPageRoute(
-                                  builder: (context) => const RecordingsListScreen(),
-                                ),
-                              );
-                            }
-                          },
-                        ),
                       ],
                     ),
                   ),

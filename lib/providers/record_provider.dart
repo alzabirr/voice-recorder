@@ -83,13 +83,55 @@ class RecordProvider extends ChangeNotifier {
     });
   }
 
+  bool _isVoiceIsolationEnabled = false;
+  bool get isVoiceIsolationEnabled => _isVoiceIsolationEnabled;
+
+  void toggleVoiceIsolation(bool value) {
+    _isVoiceIsolationEnabled = value;
+    notifyListeners();
+  }
+
+  bool _isPodcastModeEnabled = false;
+  bool get isPodcastModeEnabled => _isPodcastModeEnabled;
+
+  void togglePodcastMode(bool value) {
+    _isPodcastModeEnabled = value;
+    notifyListeners();
+  }
+
   Future<void> startRecording() async {
     try {
       if (await _audioRecorder.hasPermission()) {
         final directory = await getApplicationDocumentsDirectory();
         final path = '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.m4a';
 
-        await _audioRecorder.start(const RecordConfig(), path: path);
+        // Configuration Logic
+        // Voice Isolation: Noise Suppress + Auto Gain (Loud & Clean). Echo Cancel DISABLED (Muffles sound).
+        // Podcast Mode: High Quality AAC (256kbps). Pure.
+        
+        final int bitRate = 256000; // Consistent High Quality
+        final int sampleRate = 44100; // Standard CD Quality for compatibility
+        
+        // Processing Logic
+        final bool enableNoiseSuppress = _isVoiceIsolationEnabled;
+        final bool enableAutoGain = _isVoiceIsolationEnabled || _isPodcastModeEnabled;
+        // Echo Cancel is often the culprit for "muffled" or "unclear" voice on phones.
+        // We will DISABLE it to keep the voice bright and crisp.
+        final bool enableEchoCancel = false; 
+
+        await _audioRecorder.start(
+          RecordConfig(
+            encoder: AudioEncoder.aacLc, 
+            bitRate: bitRate,
+            sampleRate: sampleRate,
+            numChannels: 1, 
+            
+            noiseSuppress: enableNoiseSuppress,
+            echoCancel: enableEchoCancel,    
+            autoGain: enableAutoGain,
+          ), 
+          path: path
+        );
         
         _isRecording = true;
         _isPaused = false;

@@ -103,26 +103,29 @@ class RecordProvider extends ChangeNotifier {
     try {
       if (await _audioRecorder.hasPermission()) {
         final directory = await getApplicationDocumentsDirectory();
-        final path = '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.m4a';
+        final path = '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.wav';
 
         // Configuration Logic
-        // Voice Isolation: Noise Suppress + Auto Gain (Loud & Clean). Echo Cancel DISABLED (Muffles sound).
-        // Podcast Mode: High Quality AAC (256kbps). Pure.
+        // Architecture Rec 1.2: 48kHz Sample Rate
+        // Architecture Rec 6.1: WAV (16-bit PCM) for lossless quality
         
-        final int bitRate = 256000; // Consistent High Quality
-        final int sampleRate = 44100; // Standard CD Quality for compatibility
+        final int sampleRate = 48000; 
         
         // Processing Logic
+        // Architecture Rec 2.1: Hybrid DSP + AI. We start with hardware DSP.
+        // Isolation: Enable Noise Suppress & Echo Cancel (Voice Comm tuning)
+        // Podcast: Pure signal
+        
         final bool enableNoiseSuppress = _isVoiceIsolationEnabled;
-        final bool enableAutoGain = _isVoiceIsolationEnabled || _isPodcastModeEnabled;
-        // Echo Cancel is often the culprit for "muffled" or "unclear" voice on phones.
-        // We will DISABLE it to keep the voice bright and crisp.
-        final bool enableEchoCancel = false; 
+        final bool enableEchoCancel = _isVoiceIsolationEnabled;
+        final bool enableAutoGain = _isVoiceIsolationEnabled 
+            ? false // Isolation: OFF to prevent noise floor boosting during silence
+            : _isPodcastModeEnabled; // Podcast: ON for leveling 
 
         await _audioRecorder.start(
           RecordConfig(
-            encoder: AudioEncoder.aacLc, 
-            bitRate: bitRate,
+            encoder: AudioEncoder.wav, // Lossless PCM 16-bit
+            // bitRate: not used for WAV/PCM usually, determined by sample rate/depth
             sampleRate: sampleRate,
             numChannels: 1, 
             

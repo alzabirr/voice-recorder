@@ -4,6 +4,8 @@ import '../models/recording_model.dart';
 import '../providers/record_provider.dart';
 import '../utils/format_utils.dart';
 
+import 'package:share_plus/share_plus.dart';
+
 class PlaybackScreen extends StatefulWidget {
   final RecordingModel recording;
 
@@ -21,13 +23,14 @@ class _PlaybackScreenState extends State<PlaybackScreen> with SingleTickerProvid
   void initState() {
     super.initState();
     _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
+        vsync: this,
+        duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
     // Generate deterministic waveform based on recording ID
     final random = _DeterministicRandom(widget.recording.id.hashCode);
-    _staticAmplitudes = List.generate(100, (index) => random.nextDouble() * 0.8 + 0.1);
+    _staticAmplitudes =
+        List.generate(100, (index) => random.nextDouble() * 0.8 + 0.1);
   }
 
   @override
@@ -51,9 +54,16 @@ class _PlaybackScreenState extends State<PlaybackScreen> with SingleTickerProvid
             letterSpacing: -0.5,
           ),
         ),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          child: const Icon(CupertinoIcons.share, color: CupertinoColors.activeBlue),
+          onPressed: () {
+            Share.shareXFiles([XFile(widget.recording.path)], text: 'Shared from Voice Recorder');
+          },
+        ),
         border: Border(
           bottom: BorderSide(
-            color: CupertinoColors.systemGrey.withValues(alpha: 0.1),
+            color: CupertinoColors.systemGrey.withOpacity(0.1),
             width: 0.5,
           ),
         ),
